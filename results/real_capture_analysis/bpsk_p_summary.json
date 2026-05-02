@@ -1,0 +1,14 @@
+{
+  "input": "data\\real\\raw_iq\\bpsk_p.bin",
+  "samples": 19200000,
+  "duration_seconds": 8.0,
+  "rms_min": 0.08925776183605194,
+  "rms_max": 0.1296888291835785,
+  "rms_mean": 0.12289384007453918,
+  "rms_p95": 0.12845678627490997,
+  "peak_freq_hz": 910244.7509765625,
+  "peak_freq_khz": 910.2447509765625,
+  "peak_db": 83.61616289526474,
+  "rms_plot": "results\\real_capture_analysis\\bpsk_p_rms.png",
+  "spectrum_plot": "results\\real_capture_analysis\\bpsk_p_spectrum.png"
+}

@@ -1,0 +1,20 @@
+.venv/
+__pycache__/
+*.pyc
+
+# Generated datasets and SDR captures stay local.
+data/real/raw_iq/
+data/real/processed/
+data/sim/
+experiments/*/data/raw_iq/
+experiments/*/data/processed/
+
+# Model artifacts stay local unless intentionally published with Git LFS.
+results/checkpoints/
+experiments/*/results/checkpoints/
+*.pt
+
+# Large binary captures/artifacts.
+*.bin
+*.npz
+reference/GNU_Radio/HackRF Lesson/lesson11_replay/bel

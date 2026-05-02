@@ -1,0 +1,21 @@
+{
+  "source_file": "data\\real\\raw_iq\\bfsk_f.bin",
+  "modulation": "BFSK",
+  "payload": "F",
+  "center_freq": 433000000,
+  "tx_sample_rate": 8000000.0,
+  "rx_sample_rate": 2400000.0,
+  "symbol_rate": 5000.0,
+  "tx_gain": 0.0,
+  "rx_gain": 30.0,
+  "attenuator": "30~60 dB",
+  "skip_seconds": 3.4,
+  "duration_seconds": 0.5,
+  "window_size": 1024,
+  "stride": 1024,
+  "windows": 150,
+  "freq_shift_hz": 0.0,
+  "channel_center_hz": null,
+  "channel_bandwidth_hz": null,
+  "filter_taps": 129
+}
