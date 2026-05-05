@@ -21,14 +21,24 @@ frame:
 
 modulation:
   classes: ["BASK", "BFSK", "BPSK"]
+  payload_mode: random_bytes
+  payload_bytes: 16
   payloads: ["A", "F", "P"]
+  randomize:
+    bask_amp0: [0.0, 0.35]
+    bask_amp1: [0.65, 1.0]
+    bask_carrier_hz: [70000, 130000]
+    bfsk_center_hz: [80000, 120000]
+    bfsk_spacing_hz: [20000, 70000]
+    bpsk_carrier_hz: [70000, 130000]
+    bpsk_phase_error_rad: [-0.25, 0.25]
 
 dataset:
   root: data/real/processed             #data/real/processed or data/sim
-  window_size: 1024
+  window_size: 8192
   samples_per_class:
     smoke: 18
-    train: 600
+    train: 50000
   train_ratio: 0.7
   val_ratio: 0.15
   test_ratio: 0.15
@@ -37,16 +47,39 @@ dataset:
 awgn:
   snr_list: [-10, -5, 0, 5, 10, 15, 20]
 
+channel_impairment:
+  enabled: true
+  # Conservative HackRF One TX + RTL-SDR V4 RX simulation ranges.
+  # Tune these with measured capture statistics before relying on sim-to-real results.
+  carrier_freq_offset_hz: [-5000, 5000]
+  carrier_phase_offset_rad: [0.0, 6.283185307179586]
+  sample_rate_offset_ppm: [-20, 20]
+  time_offset_samples: [0, 479]
+  gain_db: [-6, 6]
+  dc_offset: [-0.02, 0.02]
+  iq_gain_imbalance_db: [-1.0, 1.0]
+  iq_phase_imbalance_deg: [-3.0, 3.0]
+  multipath_enabled: false
+  multipath_max_delay_samples: 8
+  multipath_taps: [2, 4]
+  multipath_decay: [0.15, 0.55]
+
 model:
-  type: cnn1d
+  type: resnet1d
   input_channels: 2
   num_classes: 3
-  dropout: 0.3
+  channels: 32
+  stacks: 6
+  stack_depth: 2
+  kernel_size: 5
+  fc_units: 128
+  pooled_length: 16
+  dropout: 0.1
 
 train:
-  batch_size: 64
+  batch_size: 128
   smoke_epochs: 2
-  epochs: 30
+  epochs: 120
   learning_rate: 0.001
   optimizer: adamw
   loss: cross_entropy

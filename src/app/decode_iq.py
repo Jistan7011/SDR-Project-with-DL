@@ -6,7 +6,7 @@ import numpy as np
 import torch
 
 from src.common import CLASS_NAMES
-from src.models.cnn1d import CNN1DClassifier
+from src.models.factory import build_model
 from src.signal.demod import recover_payload
 from src.signal.processing import complex64_from_channels
 
@@ -14,7 +14,8 @@ from src.signal.processing import complex64_from_channels
 def decode(input_path: str, checkpoint_path: str) -> dict[str, object]:
     data = np.load(input_path, allow_pickle=False)
     ckpt = torch.load(checkpoint_path, map_location="cpu")
-    model = CNN1DClassifier(num_classes=len(CLASS_NAMES))
+    cfg = ckpt.get("config") or {"model": {"type": "cnn1d", "input_channels": 2, "num_classes": len(CLASS_NAMES), "dropout": 0.3}}
+    model = build_model(cfg)
     model.load_state_dict(ckpt["model_state_dict"])
     model.eval()
     x = torch.from_numpy(data["iq"].astype(np.float32)).unsqueeze(0)
@@ -27,7 +28,12 @@ def decode(input_path: str, checkpoint_path: str) -> dict[str, object]:
     sample_rate = float(data["sample_rate"])
     symbol_rate = float(data["symbol_rate"])
     sps = max(1, int(round(sample_rate / symbol_rate)))
-    payload_bytes = len(str(data["payload"])) if "payload" in data.files else 1
+    if "payload_bytes" in data.files:
+        payload_bytes = int(data["payload_bytes"])
+    elif "payload" in data.files:
+        payload_bytes = len(str(data["payload"]))
+    else:
+        payload_bytes = 1
     recovered = recover_payload(modulation, iq, sps, sample_rate, payload_bytes=payload_bytes)
     fallback = None
     if not recovered.get("crc_ok") and "modulation" in data.files:

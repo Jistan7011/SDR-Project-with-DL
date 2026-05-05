@@ -11,26 +11,31 @@ from torch.utils.data import DataLoader
 
 from src.common import CLASS_NAMES, ensure_dir, load_config, write_json
 from src.dataset.iq_dataset import IQDataset
-from src.models.cnn1d import CNN1DClassifier
+from src.models.factory import build_model
+from src.train.train_cnn1d import choose_device
 
 
-def evaluate(checkpoint: str, config_path: str = "config.yaml", split: str = "test", data_root: str | None = None) -> dict[str, object]:
-    cfg = load_config(config_path)
-    ckpt = torch.load(checkpoint, map_location="cpu")
-    model = CNN1DClassifier(
-        input_channels=int(cfg["model"]["input_channels"]),
-        num_classes=int(cfg["model"]["num_classes"]),
-        dropout=float(cfg["model"]["dropout"]),
-    )
+def evaluate(
+    checkpoint: str,
+    config_path: str = "config.yaml",
+    split: str = "test",
+    data_root: str | None = None,
+    device_name: str | None = None,
+) -> dict[str, object]:
+    runtime_cfg = load_config(config_path)
+    device = choose_device(device_name or str(runtime_cfg["train"]["device"]))
+    ckpt = torch.load(checkpoint, map_location=device)
+    cfg = ckpt.get("config") or load_config(config_path)
+    model = build_model(cfg).to(device)
     model.load_state_dict(ckpt["model_state_dict"])
     model.eval()
     dataset = IQDataset(data_root or cfg["dataset"]["root"], split)
-    loader = DataLoader(dataset, batch_size=int(cfg["train"]["batch_size"]))
+    loader = DataLoader(dataset, batch_size=int(runtime_cfg.get("train", cfg["train"])["batch_size"]))
     y_true: list[int] = []
     y_pred: list[int] = []
     with torch.no_grad():
         for xb, yb in loader:
-            pred = model(xb).argmax(dim=1)
+            pred = model(xb.to(device)).argmax(dim=1).cpu()
             y_true.extend(yb.numpy().tolist())
             y_pred.extend(pred.numpy().tolist())
 
@@ -65,7 +70,14 @@ def evaluate(checkpoint: str, config_path: str = "config.yaml", split: str = "te
         plt.savefig("results/figures/snr_accuracy.png", dpi=150)
         plt.close()
 
-    result = {"accuracy": acc, "classification_report": report, "confusion_matrix": cm.tolist(), "snr_accuracy": snr_acc}
+    result = {
+        "accuracy": acc,
+        "model_type": str(cfg.get("model", {}).get("type", ckpt.get("model_type", "unknown"))),
+        "device": str(device),
+        "classification_report": report,
+        "confusion_matrix": cm.tolist(),
+        "snr_accuracy": snr_acc,
+    }
     write_json("results/logs/eval_metrics.json", result)
     print(f"accuracy={acc:.4f}")
     return result
@@ -89,8 +101,9 @@ def main() -> None:
     parser.add_argument("--config", default="config.yaml")
     parser.add_argument("--split", default="test")
     parser.add_argument("--data-root", default=None)
+    parser.add_argument("--device", default=None)
     args = parser.parse_args()
-    evaluate(args.checkpoint, args.config, args.split, args.data_root)
+    evaluate(args.checkpoint, args.config, args.split, args.data_root, args.device)
 
 
 if __name__ == "__main__":

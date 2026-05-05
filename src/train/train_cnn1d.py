@@ -10,7 +10,7 @@ from tqdm import tqdm
 
 from src.common import CLASS_NAMES, ensure_dir, load_config, set_seed, write_json
 from src.dataset.iq_dataset import IQDataset
-from src.models.cnn1d import CNN1DClassifier
+from src.models.factory import build_model
 
 
 def choose_device(requested: str) -> torch.device:
@@ -19,8 +19,20 @@ def choose_device(requested: str) -> torch.device:
     return torch.device("cpu")
 
 
-def train(config_path: str, preset: str | None = None) -> Path:
+def train(
+    config_path: str,
+    preset: str | None = None,
+    model_type: str | None = None,
+    freeze_backbone: bool = False,
+    init_checkpoint: str | None = None,
+    checkpoint_dir: str = "results/checkpoints",
+    data_root: str | None = None,
+) -> Path:
     cfg = load_config(config_path)
+    if model_type is not None:
+        cfg.setdefault("model", {})["type"] = model_type
+    if data_root is not None:
+        cfg.setdefault("dataset", {})["root"] = data_root
     set_seed(int(cfg["project"]["seed"]))
     device = choose_device(str(cfg["train"]["device"]))
     root = Path(cfg["dataset"]["root"])
@@ -32,15 +44,17 @@ def train(config_path: str, preset: str | None = None) -> Path:
     train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(val_ds, batch_size=batch_size)
 
-    model = CNN1DClassifier(
-        input_channels=int(cfg["model"]["input_channels"]),
-        num_classes=int(cfg["model"]["num_classes"]),
-        dropout=float(cfg["model"]["dropout"]),
-    ).to(device)
-    optimizer = torch.optim.AdamW(model.parameters(), lr=float(cfg["train"]["learning_rate"]))
+    model = build_model(cfg).to(device)
+    if init_checkpoint is not None:
+        ckpt = torch.load(init_checkpoint, map_location=device)
+        model.load_state_dict(ckpt["model_state_dict"])
+    if freeze_backbone and hasattr(model, "freeze_backbone"):
+        model.freeze_backbone()
+    trainable_parameters = [parameter for parameter in model.parameters() if parameter.requires_grad]
+    optimizer = torch.optim.AdamW(trainable_parameters, lr=float(cfg["train"]["learning_rate"]))
     loss_fn = nn.CrossEntropyLoss()
     best_acc = -1.0
-    ckpt_dir = ensure_dir("results/checkpoints")
+    ckpt_dir = ensure_dir(checkpoint_dir)
     log: list[dict[str, float]] = []
 
     for epoch in range(1, epochs + 1):
@@ -71,12 +85,23 @@ def train(config_path: str, preset: str | None = None) -> Path:
                     "window_size": int(cfg["dataset"]["window_size"]),
                     "sample_rate": float(cfg["sdr"]["rx_sample_rate"]),
                     "symbol_rate": float(cfg["sdr"]["symbol_rate"]),
+                    "model_type": str(cfg["model"]["type"]),
                     "config": cfg,
                 },
                 ckpt_dir / "best.pt",
             )
 
-    write_json("results/logs/train_log.json", {"device": str(device), "best_val_accuracy": best_acc, "epochs": log})
+    write_json(
+        "results/logs/train_log.json",
+        {
+            "device": str(device),
+            "model_type": str(cfg["model"]["type"]),
+            "freeze_backbone": bool(freeze_backbone),
+            "init_checkpoint": init_checkpoint,
+            "best_val_accuracy": best_acc,
+            "epochs": log,
+        },
+    )
     return ckpt_dir / "best.pt"
 
 
@@ -96,8 +121,16 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", default="config.yaml")
     parser.add_argument("--preset", choices=["smoke", "train"], default=None)
+    parser.add_argument("--model-type", default=None, help="Override config model.type, e.g. resnet1d or cnn1d")
+    parser.add_argument("--freeze-backbone", action="store_true", help="Train only classifier layers when supported")
+    parser.add_argument("--init-checkpoint", default=None, help="Initialize weights from an existing checkpoint")
+    parser.add_argument("--checkpoint-dir", default="results/checkpoints")
+    parser.add_argument("--data-root", default=None, help="Override config dataset.root")
     args = parser.parse_args()
-    print(f"Best checkpoint: {train(args.config, args.preset)}")
+    print(
+        "Best checkpoint: "
+        f"{train(args.config, args.preset, args.model_type, args.freeze_backbone, args.init_checkpoint, args.checkpoint_dir, args.data_root)}"
+    )
 
 
 if __name__ == "__main__":

@@ -45,6 +45,15 @@ def make_frame(
     sync_word: str = DEFAULT_SYNC_WORD,
 ) -> np.ndarray:
     payload_bits = text_to_bits(payload)
+    return make_frame_from_bits(payload_bits, preamble=preamble, sync_word=sync_word)
+
+
+def make_frame_from_bits(
+    payload_bits: np.ndarray,
+    preamble: str = DEFAULT_PREAMBLE,
+    sync_word: str = DEFAULT_SYNC_WORD,
+) -> np.ndarray:
+    payload_bits = np.asarray(payload_bits, dtype=np.uint8).ravel()
     crc_bits = np.asarray([(crc8(payload_bits) >> i) & 1 for i in range(7, -1, -1)], dtype=np.uint8)
     return np.concatenate([bits_from_string(preamble), bits_from_string(sync_word), payload_bits, crc_bits])
 

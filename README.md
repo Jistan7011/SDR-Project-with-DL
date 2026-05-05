@@ -1,7 +1,8 @@
 ﻿# SDR Modulation Classification Project
 
 HackRF One으로 송신하고 RTL-SDR Blog V4로 수신한 IQ 신호를 이용해
-`BASK`, `BFSK`, `BPSK` 변조 방식을 분류하는 PyTorch 1D CNN 프로젝트입니다.
+`BASK`, `BFSK`, `BPSK` 변조 방식을 분류하는 PyTorch IQ 신호 분류 프로젝트입니다.
+기본 모델은 O'Shea et al. 2018의 over-the-air radio signal classification 실험 흐름을 참고한 1D ResNet입니다.
 
 현재 기준 실험은 **실험 1: HackRF One TX + RTL-SDR V4 RX real random-window baseline**입니다.
 
@@ -34,7 +35,7 @@ SDR/
   src/
     signal/       # frame, modulation, demodulation, IQ processing
     dataset/      # simulation dataset, real IQ import
-    models/       # 1D CNN
+    models/       # 1D CNN, 1D ResNet
     train/        # train/evaluate
     sdr/          # SoapySDR capture/TX/diagnose
     experiment/   # automated SDR capture sequence
@@ -158,9 +159,9 @@ Windows에서는 `SoapyVOLKConverters: no VOLK config file found` 같은 경고�
 실제 장비가 없어도 아래 smoke test는 가능합니다.
 
 ```powershell
-.\.venv\Scripts\python.exe -m src.dataset.generate_sim_dataset --preset smoke
+.\.venv\Scripts\python.exe -m src.dataset.generate_sim_dataset --config config.yaml --preset smoke --output-root data/sim
 
-.\.venv\Scripts\python.exe -m src.train.train_cnn1d --config config.yaml --preset smoke
+.\.venv\Scripts\python.exe -m src.train.train_resnet1d --config config.yaml --preset smoke --data-root data/sim
 
 .\.venv\Scripts\python.exe -m src.train.evaluate --checkpoint results/checkpoints/best.pt
 
@@ -170,15 +171,17 @@ Windows에서는 `SoapyVOLKConverters: no VOLK config file found` 같은 경고�
 시뮬레이션 데이터 생성 과정:
 
 ```text
-payload 문자 선택
+16-byte random payload 생성
 → preamble + sync word + payload bits + CRC8 frame 생성
 → BASK/BFSK/BPSK baseband IQ 변조
+→ carrier offset, timing offset, gain/DC/IQ imbalance 등 SDR 채널 impairment 적용
 → AWGN 노이즈 추가
+→ 전체 frame에서 random 8192-sample window 추출
 → IQ 정규화
-→ [2, 1024] CNN 입력 생성
+→ [2, 8192] 모델 입력 생성
 ```
 
-시뮬레이션 채널은 현재 단순 AWGN 중심입니다. 실제 SDR의 주파수 offset, gain 특성, IQ imbalance, 외부 간섭까지 정교하게 반영한 채널은 아닙니다.
+시뮬레이션 채널은 실제 HackRF One + RTL-SDR V4 capture와 맞춰가며 조정해야 합니다. 초기값은 보수적인 범위이며, real capture의 주파수 offset, RMS, DC offset 통계를 보고 좁히거나 넓히는 방식으로 튜닝합니다.
 
 ---
 
@@ -282,7 +285,7 @@ Get-ChildItem data\real\processed -Directory | ForEach-Object { [pscustomobject]
 
 ---
 
-## 7. 1D CNN 입력 형태
+## 7. ResNet 입력 형태
 
 수신 IQ 하나는 complex signal입니다.
 
@@ -290,24 +293,24 @@ Get-ChildItem data\real\processed -Directory | ForEach-Object { [pscustomobject]
 IQ sample = I + jQ
 ```
 
-CNN에는 complex 값을 직접 넣지 않고, 실수부와 허수부를 나눠 2채널로 넣습니다.
+ResNet/CNN에는 complex 값을 직접 넣지 않고, 실수부와 허수부를 나눠 2채널로 넣습니다.
 
 sample 하나의 shape:
 
 ```text
-[2, 1024]
+[2, 8192]
 ```
 
 batch 입력 shape:
 
 ```text
-[batch, 2, 1024]
+[batch, 2, 8192]
 ```
 
-예를 들어 batch size가 64이면:
+예를 들어 batch size가 128이면:
 
 ```text
-[64, 2, 1024]
+[128, 2, 8192]
 ```
 
 label 매칭:
@@ -330,12 +333,12 @@ class index:
 
 ---
 
-## 8. 실험 1: CNN 학습 및 평가
+## 8. 실험 1: ResNet 학습 및 평가
 
 학습:
 
 ```powershell
-.\.venv\Scripts\python.exe -m src.train.train_cnn1d --config config.yaml --preset train
+.\.venv\Scripts\python.exe -m src.train.train_resnet1d --config config.yaml --preset train
 ```
 
 평가:
@@ -364,6 +367,18 @@ results/checkpoints/best.pt
 ```
 
 단, checkpoint는 `.gitignore`로 제외되므로 GitHub에는 올라가지 않습니다.
+
+논문식 synthetic-to-real fine-tuning 흐름:
+
+```powershell
+.\.venv\Scripts\python.exe -m src.dataset.generate_sim_dataset --config config.yaml --preset train --output-root data/sim
+
+.\.venv\Scripts\python.exe -m src.train.train_resnet1d --config config.yaml --preset train --data-root data/sim --checkpoint-dir results/checkpoints/sim_resnet
+
+.\.venv\Scripts\python.exe -m src.train.train_resnet1d --config config.yaml --preset train --init-checkpoint results/checkpoints/sim_resnet/best.pt --freeze-backbone --checkpoint-dir results/checkpoints/real_finetuned_resnet
+```
+
+마지막 명령은 앞쪽 residual feature extractor를 고정하고 classifier 쪽을 real SDR 데이터에 맞게 조정하는 transfer learning 실험입니다.
 
 ---
 
