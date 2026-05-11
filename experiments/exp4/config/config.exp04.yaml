@@ -1,0 +1,117 @@
+project:
+  name: sdr_modulation_ai_exp04_end_to_end_recovery
+  seed: 42
+
+sdr:
+  center_freq: 433000000
+  tx_device: hackrf
+  rx_device: rtlsdr
+  tx_sample_rate: 8000000
+  rx_sample_rate: 2400000
+  rx_sample_rate_fallback: 2048000
+  symbol_rate: 5000
+  tx_gain: 0
+  tx_amp_gain: 0
+  tx_vga_gain: 30
+  rx_gain: 30
+  baseband_offset_hz: 500000
+
+frame:
+  preamble: "1010101010101010"
+  sync_word: "11001100"
+  crc: crc8
+  payload_bytes: 1
+  total_bits: 40
+
+modulation:
+  classes: ["BASK", "BFSK", "BPSK"]
+  payloads: ["A", "F", "P", "0", "1", "7", "K", "R", "S", "Z"]
+
+dataset:
+  root: ../data/processed
+  window_size: 1024
+  feature_mode: iq_instantaneous_frequency
+  preload: true
+  target_sample_rate: 160000
+  channel_bandwidth_hz: 100000
+  split_unit: recovery_capture
+
+experiment4:
+  purpose: end_to_end_ota_modulation_classification_and_payload_recovery
+  rf_path: ota_antenna
+  rf_cable_between_sdr: false
+  tx_rx_distance_m: 1.0
+  antenna_layout: face_to_face
+  default_classifier_checkpoint: ../../exp3/results/exp03_domain_adapt_ifreq_finetune_seed44/resnet1d_seed44/checkpoints/best.pt
+  comparison_classifier_checkpoint: ../../exp3/results/exp03_domain_adapt_ifreq_finetune_classifier_seed44/resnet1d_seed44/checkpoints/best.pt
+  active_start_seconds: 1.1
+  active_duration_seconds: 5.0
+  frame_windows_per_capture: 20
+  minimum_sessions: 15
+  split_policy:
+    train: ["session_001", "session_002", "session_003", "session_004", "session_005", "session_006", "session_007", "session_008", "session_009"]
+    val: ["session_010", "session_011", "session_012"]
+    test: ["session_013", "session_014", "session_015"]
+  session_plan:
+    - {session_id: session_001, tx_vga_gain: 25, rx_gain: 25, baseband_offset_hz: 500000}
+    - {session_id: session_002, tx_vga_gain: 30, rx_gain: 25, baseband_offset_hz: 500000}
+    - {session_id: session_003, tx_vga_gain: 35, rx_gain: 25, baseband_offset_hz: 500000}
+    - {session_id: session_004, tx_vga_gain: 25, rx_gain: 30, baseband_offset_hz: 500000}
+    - {session_id: session_005, tx_vga_gain: 30, rx_gain: 30, baseband_offset_hz: 500000}
+    - {session_id: session_006, tx_vga_gain: 35, rx_gain: 30, baseband_offset_hz: 500000}
+    - {session_id: session_007, tx_vga_gain: 25, rx_gain: 35, baseband_offset_hz: 500000}
+    - {session_id: session_008, tx_vga_gain: 30, rx_gain: 35, baseband_offset_hz: 500000}
+    - {session_id: session_009, tx_vga_gain: 35, rx_gain: 35, baseband_offset_hz: 500000}
+    - {session_id: session_010, tx_vga_gain: 27, rx_gain: 30, baseband_offset_hz: 500000}
+    - {session_id: session_011, tx_vga_gain: 32, rx_gain: 30, baseband_offset_hz: 500000}
+    - {session_id: session_012, tx_vga_gain: 30, rx_gain: 32, baseband_offset_hz: 500000}
+    - {session_id: session_013, tx_vga_gain: 30, rx_gain: 30, baseband_offset_hz: 500000}
+    - {session_id: session_014, tx_vga_gain: 30, rx_gain: 30, baseband_offset_hz: 250000}
+    - {session_id: session_015, tx_vga_gain: 32, rx_gain: 28, baseband_offset_hz: 500000}
+
+model:
+  type: resnet1d
+  input_channels: 3
+  num_classes: 3
+  dropout: 0.3
+
+train:
+  batch_size: 64
+  smoke_epochs: 2
+  epochs: 100
+  learning_rate: 0.0005
+  optimizer: adamw
+  loss: cross_entropy
+  device: cuda
+  finetune:
+    init_checkpoint: ../../exp3/results/exp03_domain_adapt_ifreq_finetune_seed44/resnet1d_seed44/checkpoints/best.pt
+    freeze_backbone: false
+  augmentation:
+    enabled: true
+    time_shift: true
+    max_time_shift: 32
+    phase_rotation: true
+    frequency_jitter: true
+    max_frequency_jitter_cycles: 1.0
+    amplitude_scale: true
+    min_amplitude_scale: 0.90
+    max_amplitude_scale: 1.10
+
+evaluation:
+  metrics:
+    - modulation_classification_accuracy
+    - ber
+    - cer
+    - crc_pass_rate
+    - packet_success_rate
+    - payload_recovery_accuracy
+    - oracle_demod_recovery_rate
+    - confidence_distribution
+  success_minimum:
+    classification_accuracy: 0.70
+    oracle_crc_pass_rate: 0.60
+    payload_recovery_accuracy: 0.40
+  success_target:
+    classification_accuracy: 0.75
+    oracle_crc_pass_rate: 0.75
+    payload_recovery_accuracy: 0.60

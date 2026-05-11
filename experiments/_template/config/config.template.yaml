@@ -1,0 +1,10 @@
+project:
+  experiment_id: expNN
+  seed: 42
+
+dataset:
+  root: experiments/expN/data/processed
+  window_size: 1024
+
+results:
+  root: experiments/expN/results

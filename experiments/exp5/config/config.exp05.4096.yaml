@@ -1,0 +1,87 @@
+project:
+  name: sdr_modulation_ai_exp05_bfsk_bpsk_improvement_4096
+  seed: 42
+
+sdr:
+  center_freq: 433000000
+  tx_device: hackrf
+  rx_device: rtlsdr
+  tx_sample_rate: 8000000
+  rx_sample_rate: 2400000
+  rx_sample_rate_fallback: 2048000
+  symbol_rate: 5000
+  tx_gain: 0
+  tx_amp_gain: 0
+  tx_vga_gain: 30
+  rx_gain: 30
+  baseband_offset_hz: 500000
+
+frame:
+  preamble: "1010101010101010"
+  sync_word: "11001100"
+  crc: crc8
+  payload_bytes: 1
+  total_bits: 40
+
+modulation:
+  classes: ["BASK", "BFSK", "BPSK"]
+  payloads: ["A", "F", "P", "0", "1", "7", "K", "R", "S", "Z"]
+
+dataset:
+  root: ../data/processed_4096
+  window_size: 4096
+  feature_mode: iq_mag_ifreq_dphase
+  preload: false
+  target_sample_rate: 160000
+  channel_bandwidth_hz: 100000
+  split_unit: session
+
+experiment5:
+  purpose: secondary_4096_window_ablation
+  active_start_seconds: 1.1
+  active_duration_seconds: 5.0
+  classification_windows_per_capture: 12
+  minimum_sessions: 30
+  split_policy:
+    train:
+      ["session_001", "session_002", "session_003", "session_004", "session_005", "session_006", "session_007",
+       "session_008", "session_009", "session_010", "session_011", "session_012", "session_016", "session_017",
+       "session_018", "session_019", "session_020", "session_021", "session_022", "session_023", "session_024"]
+    val: ["session_013", "session_014", "session_015", "session_025", "session_026"]
+    test: ["session_027", "session_028", "session_029", "session_030"]
+
+model:
+  type: resnet1d
+  input_channels: 5
+  num_classes: 3
+  dropout: 0.35
+
+train:
+  batch_size: 48
+  smoke_epochs: 1
+  epochs: 120
+  learning_rate: 0.00035
+  optimizer: adamw
+  loss: cross_entropy
+  device: cuda
+  finetune:
+    init_checkpoint: ../../exp4/results/exp04_resnet_finetune/checkpoints/best.pt
+    partial_load: true
+    freeze_backbone: false
+  checkpoint_selection:
+    metric: balanced_score
+    accuracy_weight: 0.35
+  sampler:
+    enabled: true
+    balance_keys: ["modulation", "session_id"]
+    max_weight: 5.0
+  augmentation:
+    enabled: true
+    time_shift: true
+    max_time_shift: 128
+    phase_rotation: true
+    frequency_jitter: true
+    max_frequency_jitter_cycles: 1.5
+    amplitude_scale: true
+    min_amplitude_scale: 0.85
+    max_amplitude_scale: 1.15

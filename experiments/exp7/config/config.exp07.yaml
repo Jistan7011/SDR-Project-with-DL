@@ -1,0 +1,175 @@
+project:
+  name: sdr_modulation_ai_exp07_unknown_protocol_absorption_guard
+  seed: 42
+
+sdr:
+  center_freq: 433000000
+  tx_device: hackrf
+  rx_device: rtlsdr
+  tx_sample_rate: 8000000
+  rx_sample_rate: 2400000
+  rx_sample_rate_fallback: 2048000
+  symbol_rate: 5000
+  baseband_offset_hz: 500000
+
+dataset:
+  reference_root: ../../exp5/data/processed
+  raw_root: ../data/raw_iq
+  root: ../data/processed
+  evidence_root: ../data/evidence
+  window_size: 2048
+  feature_mode: iq_mag_ifreq_dphase
+  input_channels: 5
+  preload: false
+  target_sample_rate: 160000
+  channel_bandwidth_hz: 100000
+  split_unit: session
+
+model:
+  type: resnet1d
+  input_channels: 5
+  num_classes: 3
+  dropout: 0.35
+
+experiment7:
+  purpose: unknown_protocol_bask_absorption_guard
+  exp5_best_checkpoint: ../../exp5/results/exp05_resnet_2048/resnet1d_seed42/checkpoints/best.pt
+  exp5_accuracy: 0.7308
+  exp5_worst_recall: 0.7050
+  exp5_bfsk_bpsk_to_bask_rate: 0.1894
+  payload_bytes_candidates: [1, 2]
+  payload_alphabet: "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+  new_sessions:
+    first: 31
+    last: 60
+  active_start_seconds: 1.1
+  active_duration_seconds: 5.0
+  classification_windows_per_capture: 20
+  minimum_sessions: 60
+  raw_roots:
+    - ../../exp4/data/raw_iq
+    - ../../exp5/data/raw_iq
+    - ../data/raw_iq
+  split_policy:
+    train:
+      ["session_001", "session_002", "session_003", "session_004", "session_005", "session_006", "session_007",
+       "session_008", "session_009", "session_010", "session_011", "session_012", "session_016", "session_017",
+       "session_018", "session_019", "session_020", "session_021", "session_022", "session_023", "session_024",
+       "session_031", "session_032", "session_033", "session_034", "session_035", "session_036", "session_037",
+       "session_038", "session_039", "session_040", "session_041", "session_042", "session_043", "session_044",
+       "session_045", "session_046", "session_047", "session_048", "session_049", "session_050", "session_051"]
+    val:
+      ["session_013", "session_014", "session_015", "session_025", "session_026",
+       "session_052", "session_053", "session_054", "session_055"]
+    test:
+      ["session_027", "session_028", "session_029", "session_030",
+       "session_056", "session_057", "session_058", "session_059", "session_060"]
+  session_plan:
+    - {session_id: session_031, tx_vga_gain: 25, rx_gain: 30, baseband_offset_hz: 500000, antenna_note: random_payload_face_to_face_center}
+    - {session_id: session_032, tx_vga_gain: 30, rx_gain: 30, baseband_offset_hz: 500000, antenna_note: random_payload_face_to_face_center}
+    - {session_id: session_033, tx_vga_gain: 35, rx_gain: 30, baseband_offset_hz: 500000, antenna_note: random_payload_face_to_face_center}
+    - {session_id: session_034, tx_vga_gain: 30, rx_gain: 25, baseband_offset_hz: 500000, antenna_note: random_payload_face_to_face_center}
+    - {session_id: session_035, tx_vga_gain: 30, rx_gain: 35, baseband_offset_hz: 500000, antenna_note: random_payload_face_to_face_center}
+    - {session_id: session_036, tx_vga_gain: 25, rx_gain: 30, baseband_offset_hz: 250000, antenna_note: random_payload_face_to_face_center}
+    - {session_id: session_037, tx_vga_gain: 30, rx_gain: 30, baseband_offset_hz: 250000, antenna_note: random_payload_face_to_face_center}
+    - {session_id: session_038, tx_vga_gain: 35, rx_gain: 30, baseband_offset_hz: 250000, antenna_note: random_payload_face_to_face_center}
+    - {session_id: session_039, tx_vga_gain: 30, rx_gain: 25, baseband_offset_hz: 250000, antenna_note: random_payload_face_to_face_center}
+    - {session_id: session_040, tx_vga_gain: 30, rx_gain: 35, baseband_offset_hz: 250000, antenna_note: random_payload_face_to_face_center}
+    - {session_id: session_041, tx_vga_gain: 28, rx_gain: 32, baseband_offset_hz: 500000, antenna_note: random_payload_slight_angle_15deg}
+    - {session_id: session_042, tx_vga_gain: 32, rx_gain: 28, baseband_offset_hz: 500000, antenna_note: random_payload_slight_angle_15deg}
+    - {session_id: session_043, tx_vga_gain: 28, rx_gain: 32, baseband_offset_hz: 250000, antenna_note: random_payload_slight_angle_15deg}
+    - {session_id: session_044, tx_vga_gain: 32, rx_gain: 28, baseband_offset_hz: 250000, antenna_note: random_payload_slight_angle_15deg}
+    - {session_id: session_045, tx_vga_gain: 30, rx_gain: 30, baseband_offset_hz: 500000, antenna_note: random_payload_height_offset_small}
+    - {session_id: session_046, tx_vga_gain: 26, rx_gain: 34, baseband_offset_hz: 500000, antenna_note: random_payload_height_offset_small}
+    - {session_id: session_047, tx_vga_gain: 34, rx_gain: 26, baseband_offset_hz: 500000, antenna_note: random_payload_height_offset_small}
+    - {session_id: session_048, tx_vga_gain: 26, rx_gain: 34, baseband_offset_hz: 250000, antenna_note: random_payload_height_offset_small}
+    - {session_id: session_049, tx_vga_gain: 34, rx_gain: 26, baseband_offset_hz: 250000, antenna_note: random_payload_height_offset_small}
+    - {session_id: session_050, tx_vga_gain: 30, rx_gain: 30, baseband_offset_hz: 250000, antenna_note: random_payload_height_offset_small}
+    - {session_id: session_051, tx_vga_gain: 32, rx_gain: 30, baseband_offset_hz: 500000, antenna_note: random_payload_small_lateral_offset}
+    - {session_id: session_052, tx_vga_gain: 28, rx_gain: 30, baseband_offset_hz: 500000, antenna_note: random_payload_small_lateral_offset}
+    - {session_id: session_053, tx_vga_gain: 32, rx_gain: 30, baseband_offset_hz: 250000, antenna_note: random_payload_small_lateral_offset}
+    - {session_id: session_054, tx_vga_gain: 28, rx_gain: 30, baseband_offset_hz: 250000, antenna_note: random_payload_small_lateral_offset}
+    - {session_id: session_055, tx_vga_gain: 30, rx_gain: 32, baseband_offset_hz: 500000, antenna_note: random_payload_small_lateral_offset}
+    - {session_id: session_056, tx_vga_gain: 30, rx_gain: 28, baseband_offset_hz: 500000, antenna_note: random_payload_holdout_condition}
+    - {session_id: session_057, tx_vga_gain: 30, rx_gain: 32, baseband_offset_hz: 250000, antenna_note: random_payload_holdout_condition}
+    - {session_id: session_058, tx_vga_gain: 30, rx_gain: 28, baseband_offset_hz: 250000, antenna_note: random_payload_holdout_condition}
+    - {session_id: session_059, tx_vga_gain: 32, rx_gain: 32, baseband_offset_hz: 500000, antenna_note: random_payload_holdout_condition}
+    - {session_id: session_060, tx_vga_gain: 28, rx_gain: 28, baseband_offset_hz: 250000, antenna_note: random_payload_holdout_condition}
+  evidence_thresholds:
+    low_confidence: 0.40
+    low_margin: 0.14
+    high_frequency_separation: 0.62
+    high_phase_transition: 0.42
+    high_unknown_entropy: 1.08
+
+experiment5:
+  active_start_seconds: 1.1
+  active_duration_seconds: 5.0
+  classification_windows_per_capture: 20
+  minimum_sessions: 60
+  split_policy:
+    train:
+      ["session_001", "session_002", "session_003", "session_004", "session_005", "session_006", "session_007",
+       "session_008", "session_009", "session_010", "session_011", "session_012", "session_016", "session_017",
+       "session_018", "session_019", "session_020", "session_021", "session_022", "session_023", "session_024",
+       "session_031", "session_032", "session_033", "session_034", "session_035", "session_036", "session_037",
+       "session_038", "session_039", "session_040", "session_041", "session_042", "session_043", "session_044",
+       "session_045", "session_046", "session_047", "session_048", "session_049", "session_050", "session_051"]
+    val:
+      ["session_013", "session_014", "session_015", "session_025", "session_026",
+       "session_052", "session_053", "session_054", "session_055"]
+    test:
+      ["session_027", "session_028", "session_029", "session_030",
+       "session_056", "session_057", "session_058", "session_059", "session_060"]
+  decisions:
+    hard: ["BASK", "BFSK", "BPSK"]
+    ambiguous:
+      - AMBIGUOUS_BASK_LIKE_WITH_BFSK_EVIDENCE
+      - AMBIGUOUS_BASK_LIKE_WITH_BPSK_EVIDENCE
+      - UNKNOWN_LOW_CONFIDENCE
+
+train:
+  batch_size: 64
+  smoke_epochs: 1
+  base_epochs: 160
+  guard_epochs: 120
+  learning_rate: 0.00035
+  guard_learning_rate: 0.001
+  device: cuda
+  seeds: [42, 43, 44]
+  finetune:
+    init_checkpoint: ../../exp5/results/exp05_resnet_2048/resnet1d_seed42/checkpoints/best.pt
+    partial_load: true
+    freeze_backbone: false
+  checkpoint_selection:
+    metric: balanced_score
+    accuracy_weight: 0.35
+  sampler:
+    enabled: true
+    balance_keys: ["modulation", "session_id"]
+    max_weight: 5.0
+  augmentation:
+    enabled: true
+    time_shift: true
+    max_time_shift: 96
+    phase_rotation: true
+    frequency_jitter: true
+    max_frequency_jitter_cycles: 1.5
+    amplitude_scale: true
+    min_amplitude_scale: 0.85
+    max_amplitude_scale: 1.15
+
+evaluation:
+  success_minimum:
+    forced_accuracy: 0.74
+    worst_recall: 0.72
+    bfsk_bpsk_hard_bask_rate: 0.12
+    bfsk_bpsk_candidate_retention: 0.90
+    true_bask_hard_bask_precision: 0.70
+    ambiguous_rate: 0.25
+  success_target:
+    forced_accuracy: 0.78
+    worst_recall: 0.75
+    bfsk_bpsk_hard_bask_rate: 0.08
+    bfsk_bpsk_candidate_retention: 0.95
+    true_bask_hard_bask_precision: 0.75

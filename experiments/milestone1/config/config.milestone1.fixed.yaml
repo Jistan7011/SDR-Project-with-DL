@@ -1,0 +1,151 @@
+project:
+  name: Milestone1Fixed
+  seed: 42
+
+sdr:
+  tx_device: hackrf_one
+  rx_device: rtl_sdr
+  tx_backend: hackrf_transfer
+  center_freq: 433920000
+  sample_rate: 2400000
+  tx_sample_rate: 2400000
+  rx_sample_rate: 2400000
+  symbol_rate: 5000
+  samples_per_symbol: 480
+  tx_vga_gain: 30
+  tx_amp_gain: 0
+  rx_gain: 30
+  agc: false
+  distance_m: 1.0
+  baseband_offset_hz: 500000
+
+modulation:
+  classes: ["BASK", "BFSK", "BPSK"]
+  bfsk_freq_dev_hz: 50000
+  random_payload_bits: true
+  payload_seed_policy: same_session_capture_seed_shared_across_modulations
+
+dataset:
+  root: ../data/synthetic
+  ota_root: ../data/ota_processed_fixed
+  ota_clean_root: ../data/ota_processed_fixed
+  raw_ota_root: ../data/raw_ota_fixed
+  window_len: 1024
+  stride: 256
+  input_channels: 2
+  target_sample_rate: 160000
+  channel_bandwidth_hz: 100000
+  normalization: unit_variance
+  preload: false
+  train_ratio: 0.72
+  val_ratio: 0.08
+  test_ratio: 0.20
+
+synthetic:
+  root: ../data/synthetic
+  samples_per_class:
+    smoke: 24
+    train: 20000
+  bits_per_example: 256
+  train_ratio: 0.72
+  val_ratio: 0.08
+  test_ratio: 0.20
+  snr_db: [-20, -10, -5, 0, 5, 10, 15, 20, 30]
+  cfo_hz_max: 5000
+  clock_offset_sigma: 0.0001
+  multipath_taps: 8
+  multipath_delay_spread: [0.0, 0.5, 1.0, 2.0]
+  rrc_rolloff_range: [0.1, 0.4]
+  phase_offset_range: [0.0, 6.283185307179586]
+  gain_range: [0.5, 1.5]
+
+ota:
+  capture_seconds: 5.0
+  noise_capture_seconds: 2.0
+  rx_lead_seconds: 0.5
+  tx_guard_seconds: 0.2
+  active_start_seconds: 1.1
+  active_duration_seconds: 3.8
+  window_start_seconds: 1.1
+  window_end_seconds: null
+  window_sampling: uniform_tx_region
+  balance_after_import: true
+  active_region_detection:
+    enabled: false
+    block_ms: 5.0
+    hop_ms: 2.5
+    min_rms_ratio: 1.2
+    min_absolute_rms_extra: 0.0
+    pad_seconds: 0.05
+    ignore_lead_fraction: 0.8
+  quality_filter:
+    enabled: true
+    min_tx_to_noise_rms_ratio: 2.0
+    min_estimated_snr_db: 6.0
+    min_spectral_peak_prominence: 0.0
+    max_clipping_rate: 0.02
+  train_test_partition: paper_80_20
+  examples_per_capture_limit: 0
+  off_tune_reason: avoid_direct_conversion_dc_impairment
+  fixed_stage2_gate:
+    min_bpsk_recall: 0.30
+    min_worst_recall: 0.0001
+  session_plan:
+    - session_range: [1, 1]
+      tx_vga_gain: 25
+      tx_amp_gain: 0
+      rx_gain: 30
+      baseband_offset_hz: 500000
+    - session_range: [2, 2]
+      tx_vga_gain: 30
+      tx_amp_gain: 0
+      rx_gain: 30
+      baseband_offset_hz: 500000
+    - session_range: [3, 3]
+      tx_vga_gain: 35
+      tx_amp_gain: 0
+      rx_gain: 30
+      baseband_offset_hz: 500000
+    - session_range: [4, 4]
+      tx_vga_gain: 30
+      tx_amp_gain: 0
+      rx_gain: 25
+      baseband_offset_hz: 250000
+    - session_range: [5, 5]
+      tx_vga_gain: 30
+      tx_amp_gain: 0
+      rx_gain: 35
+      baseband_offset_hz: 250000
+
+model:
+  type: oshea2018_resnet1d
+  input_channels: 2
+  num_classes: 3
+  dropout: 0.1
+
+train:
+  batch_size: 512
+  smoke_epochs: 1
+  epochs: 8
+  learning_rate: 0.001
+  optimizer: adam
+  loss: cross_entropy
+  device: cuda
+  amp: true
+  num_workers: 4
+  pin_memory: true
+  persistent_workers: true
+  prefetch_factor: 4
+
+transfer:
+  freeze_backbone: true
+  fine_tune_epochs: 50
+  trainable_layers: classifier
+
+evaluation:
+  metrics:
+    - accuracy
+    - macro_f1
+    - class_recall
+    - confusion_matrix
+    - bfsk_bpsk_to_bask_rate

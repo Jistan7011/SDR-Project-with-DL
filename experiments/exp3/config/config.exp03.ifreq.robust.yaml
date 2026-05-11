@@ -1,0 +1,109 @@
+project:
+  name: sdr_modulation_ai_exp03_ifreq_robust
+  seed: 42
+
+sdr:
+  center_freq: 433000000
+  tx_device: hackrf
+  rx_device: rtlsdr
+  tx_sample_rate: 8000000
+  rx_sample_rate: 2400000
+  rx_sample_rate_fallback: 2048000
+  symbol_rate: 5000
+  tx_gain: 0
+  tx_amp_gain: 0
+  tx_vga_gain: 30
+  rx_gain: 30
+  baseband_offset_hz: 500000
+
+frame:
+  preamble: "1010101010101010"
+  sync_word: "11001100"
+  crc: "crc8"
+
+modulation:
+  classes: ["BASK", "BFSK", "BPSK"]
+  payloads: ["A", "F", "P", "0", "1", "7", "K", "R", "S", "Z"]
+
+dataset:
+  root: ../data/processed
+  window_size: 1024
+  feature_mode: iq_instantaneous_frequency
+  preload: true
+  target_sample_rate: 160000
+  channel_bandwidth_hz: 100000
+  samples_per_class:
+    smoke: 18
+    train: 600
+  train_ratio: 0.7
+  val_ratio: 0.15
+  test_ratio: 0.15
+  split_unit: session
+
+experiment3:
+  purpose: 1m_ota_distance_generalization_ifreq_robust_augmentation
+  rf_path: ota_antenna
+  rf_cable_between_sdr: false
+  tx_rx_distance_m: 1.0
+  antenna_layout: face_to_face
+  payload_pool: ["A", "F", "P", "0", "1", "7", "K", "R", "S", "Z"]
+  sessions:
+    train: ["session_001", "session_002", "session_003", "session_004", "session_005", "session_006", "session_007", "session_008", "session_009"]
+    val: ["session_010", "session_011", "session_012"]
+    test_a: ["session_013", "session_014", "session_015"]
+    test_b: ["session_016", "session_017", "session_018", "session_019", "session_020", "session_021"]
+  offsets:
+    primary_candidates_hz: [250000, 500000]
+    robustness_offsets_hz: [100000]
+    default_primary_hz: 500000
+  capture:
+    tx_seconds: 5
+    capture_seconds: 10
+    noise_seconds: 3
+    tx_start_delay_seconds: 1
+  import:
+    active_start_seconds: 1.1
+    active_duration_seconds: 4.5
+    windows_per_capture: 80
+    target_sample_rate: 160000
+    channel_bandwidth_hz: 100000
+  quality_gate:
+    rtl_test_sample_rate: 2400000
+    fallback_rx_sample_rate: 2048000
+    snr_formula: "10*log10(max(active_power-noise_power, eps)/noise_power)"
+  model_switch:
+    seeds: [42, 43, 44]
+    test_accuracy_target: 0.75
+
+awgn:
+  snr_list: [-10, -5, 0, 5, 10, 15, 20]
+
+model:
+  type: resnet1d
+  input_channels: 3
+  num_classes: 3
+  dropout: 0.35
+
+train:
+  batch_size: 128
+  smoke_epochs: 2
+  epochs: 30
+  learning_rate: 0.0007
+  optimizer: adamw
+  loss: cross_entropy
+  device: cuda
+  augmentation:
+    enabled: true
+    time_shift: true
+    max_time_shift: 96
+    phase_rotation: true
+    frequency_jitter: true
+    max_frequency_jitter_cycles: 6.0
+    amplitude_scale: true
+    min_amplitude_scale: 0.60
+    max_amplitude_scale: 1.45
+
+evaluation:
+  metrics: ["accuracy", "confusion_matrix", "precision", "recall", "f1", "ber", "cer", "throughput"]
+  primary_split: test_b
+  comparison_splits: ["test_a", "test_b"]

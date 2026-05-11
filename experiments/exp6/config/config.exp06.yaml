@@ -1,0 +1,87 @@
+project:
+  name: sdr_modulation_ai_exp06_two_stage_classifier
+  seed: 42
+
+sdr:
+  center_freq: 433000000
+  tx_device: hackrf
+  rx_device: rtlsdr
+  tx_sample_rate: 8000000
+  rx_sample_rate: 2400000
+  rx_sample_rate_fallback: 2048000
+  symbol_rate: 5000
+
+dataset:
+  source_root: ../../exp5/data/processed
+  stage_root: ../data/processed_stage
+  window_size: 2048
+  feature_mode: iq_mag_ifreq_dphase
+  preload: false
+
+model:
+  type: resnet1d
+  input_channels: 5
+  dropout: 0.35
+
+experiment6:
+  purpose: reduce_bfsk_bpsk_to_bask_errors_with_two_stage_classifier
+  exp5_best_checkpoint: ../../exp5/results/exp05_resnet_2048/resnet1d_seed42/checkpoints/best.pt
+  exp5_best_metrics: ../../exp5/results/exp05_resnet_2048/resnet1d_seed42/logs/eval_metrics.json
+  exp5_bfsk_bpsk_to_bask_rate: 0.1894
+  stage1:
+    dataset_dir: bask_vs_nonbask
+    class_names: ["BASK", "NON_BASK"]
+    positive_class: NON_BASK
+  stage2:
+    dataset_dir: bfsk_vs_bpsk
+    class_names: ["BFSK", "BPSK"]
+  threshold_sweep:
+    min: 0.40
+    max: 0.70
+    step: 0.02
+    min_bask_recall: 0.72
+
+train:
+  batch_size: 64
+  smoke_epochs: 1
+  epochs: 80
+  learning_rate: 0.00035
+  optimizer: adamw
+  loss: cross_entropy
+  device: cuda
+  finetune:
+    init_checkpoint: ../../exp5/results/exp05_resnet_2048/resnet1d_seed42/checkpoints/best.pt
+    partial_load: true
+    freeze_backbone: false
+  checkpoint_selection:
+    metric: balanced_score
+    accuracy_weight: 0.35
+  sampler:
+    enabled: true
+    balance_keys: ["label_name", "session_id"]
+    max_weight: 5.0
+  augmentation:
+    enabled: true
+    time_shift: true
+    max_time_shift: 96
+    phase_rotation: true
+    frequency_jitter: true
+    max_frequency_jitter_cycles: 1.5
+    amplitude_scale: true
+    min_amplitude_scale: 0.85
+    max_amplitude_scale: 1.15
+
+evaluation:
+  success_minimum:
+    accuracy: 0.76
+    bfsk_recall: 0.76
+    bpsk_recall: 0.74
+    worst_recall: 0.72
+    bask_recall: 0.72
+    bfsk_bpsk_to_bask_error_reduction: 0.25
+  success_target:
+    accuracy: 0.79
+    bfsk_recall: 0.80
+    bpsk_recall: 0.77
+    worst_recall: 0.75
+    bfsk_bpsk_to_bask_error_reduction: 0.35

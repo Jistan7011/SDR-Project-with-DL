@@ -1,0 +1,92 @@
+project:
+  name: sdr_modulation_ai_exp08_blind_multitask_classifier
+  seed: 42
+
+sdr:
+  center_freq: 433000000
+  tx_device: hackrf
+  rx_device: rtlsdr
+  tx_sample_rate: 8000000
+  rx_sample_rate: 2400000
+  symbol_rate: 5000
+  baseband_offset_hz: 500000
+
+dataset:
+  source_root: ../../exp7/data/processed_retrained
+  root: ../data/processed
+  window_size: 2048
+  feature_mode: iq_mag_ifreq_dphase
+  input_channels: 5
+  preload: false
+  split_unit: session
+
+model:
+  type: multitask_resnet1d
+  input_channels: 5
+  num_classes: 3
+  dropout: 0.35
+  embedding_dim: 256
+
+experiment8:
+  purpose: blind_3class_boundary_improvement
+  baseline_checkpoint: ../../exp7/results/base_retrained_seed42/checkpoints/best.pt
+  baseline_accuracy: 0.7246
+  baseline_worst_recall: 0.7167
+  baseline_bfsk_bpsk_to_bask_rate: 0.1894
+  class_names: ["BASK", "BFSK", "BPSK"]
+  success_minimum:
+    accuracy: 0.76
+    worst_recall: 0.72
+    bask_recall: 0.72
+    bfsk_recall: 0.75
+    bpsk_recall: 0.73
+    bfsk_bpsk_to_bask_rate: 0.08
+  success_target:
+    accuracy: 0.78
+    macro_f1: 0.78
+    worst_recall: 0.75
+    bfsk_bpsk_to_bask_rate: 0.05
+    boundary_error_reduction: 0.25
+
+train:
+  batch_size: 64
+  smoke_epochs: 1
+  epochs: 180
+  learning_rate: 0.0003
+  weight_decay: 0.01
+  device: cuda
+  seeds: [42, 43, 44]
+  finetune:
+    init_checkpoint: ../../exp7/results/base_retrained_seed42/checkpoints/best.pt
+    partial_load: true
+    freeze_backbone: false
+  losses:
+    multiclass_weight: 1.0
+    bask_binary_weight: 0.45
+    bfsk_bpsk_weight: 0.55
+    contrastive_weight: 0.0
+    contrastive_temperature: 0.2
+  checkpoint_selection:
+    metric: exp08_balanced
+    accuracy_weight: 0.35
+    worst_recall_weight: 0.45
+    nonbask_boundary_weight: 0.20
+  sampler:
+    enabled: true
+    balance_keys: ["modulation", "session_id"]
+    hard_negative_manifest: ../results/hard_negative_mining/hard_negative_manifest.json
+    hard_negative_weight: 2.0
+    max_weight: 6.0
+  augmentation:
+    enabled: true
+    time_shift: true
+    max_time_shift: 96
+    phase_rotation: true
+    frequency_jitter: true
+    max_frequency_jitter_cycles: 1.5
+    amplitude_scale: true
+    min_amplitude_scale: 0.85
+    max_amplitude_scale: 1.15
+
+evaluation:
+  condition_keys: ["session_id", "payload", "tx_vga_gain", "rx_gain", "baseband_offset_hz", "snr_db"]

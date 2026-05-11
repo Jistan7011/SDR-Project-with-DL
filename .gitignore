@@ -1,23 +1,53 @@
 .venv/
+.pytest_cache/
 __pycache__/
 *.pyc
+.ipynb_checkpoints/
 
 # Generated datasets and SDR captures stay local.
 data/real/raw_iq/
 data/real/processed/
 data/sim/
+data/
+!data/.gitkeep
 experiments/*/data/raw_iq/
 experiments/*/data/processed/
+experiments/*/data/**
+!experiments/_template/data/raw_iq/
+!experiments/_template/data/raw_iq/.gitkeep
+!experiments/_template/data/processed/
+!experiments/_template/data/processed/.gitkeep
+!experiments/*/data/metadata/
+!experiments/*/data/metadata/.gitkeep
 
 # Model artifacts stay local unless intentionally published with Git LFS.
+results/
 results/checkpoints/
+experiments/*/results/**
 experiments/*/results/checkpoints/
+!experiments/_template/results/checkpoints/
+!experiments/_template/results/checkpoints/.gitkeep
 *.pt
+*.pth
+*.pkl
+*.joblib
+*.onnx
 
 # Large binary captures/artifacts.
 *.bin
 *.npz
+*.npy
+*.zip
+*.7z
+*.tar
+*.tar.gz
 reference/GNU_Radio/HackRF Lesson/lesson11_replay/bel
 
-# Local paper library.
+# Local render/build scratch outputs.
+docx_render_check/
+report/
+
+
+
+#논문
 paper/
